@@ -1,0 +1,41 @@
+'''
+this code file will import 7=HandTrackingModule to use
+this code function and 7=HandTrackingModule are same
+'''
+
+import cv2
+import mediapipe as mp
+import time
+import HandTrackingModule as htm
+
+pTime = 0
+cTime = 0
+cap = cv2.VideoCapture(0)
+detector = htm.handDetector()         # no need to declare anything inside () cuz already declared __init__(self, mode=False, maxHands=2, detectionCon=0.5, trackCon=0.5)
+
+while True:
+    success, img = cap.read()
+    img = detector.findHands(img)     # need to pass img to .findHands() for def findHands(self, img, draw=True): to process
+                                      # img = detector.findHands(img) means return process detector.findHands(img) to img variable
+    lmList = detector.findPosition(img)
+    if len(lmList) != 0:
+        print(lmList[4])
+
+    cTime = time.time()
+    fps = 1 / (cTime - pTime)
+    pTime = cTime
+
+
+    cv2.putText(img, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
+    '''
+    1. img = where to put text
+    2. str(int(fps)) = the message that want to put
+    3. (10, 70) = location of text in the frame
+    4. cv2.FONT_HERSHEY_PLAIN = font type
+    5. 3 = font size
+    6. (255, 0,255) = font color
+    7. 3 = font thickness
+    '''
+
+    cv2.imshow("Video Window", img)
+    cv2.waitKey(1)
