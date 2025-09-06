@@ -12,8 +12,6 @@ put circle on point 4
 
 
 find position function of the finger
-
-this code file will be HandTrackingModule.py, so it can be import to other file to use 
 '''
 
 import cv2
@@ -28,7 +26,7 @@ min_detection_confidence = 0.5,
 min_tracking_confidence = 0.5
 
 we create a handDetector() class to call the require parameter
-so inside __init() bracket, we declare the required parameter
+so inside __init__() bracket, we declare the required parameter
 
 __init__(self, mode=False, maxHands=2, detectionCon=0.5, trackCon=0.5) is same as:
 static_image_mode = False,
@@ -52,7 +50,7 @@ class handDetector():
         self.detectionCon = detectionCon
         self.trackCon = trackCon
 
-        self.mpHands = mp.solutions.hands
+        self.mpHands = mp.solutions.hands       # hand landmark detection model
         self.hands = self.mpHands.Hands(static_image_mode=self.mode, max_num_hands=self.maxHands, min_detection_confidence=self.detectionCon,min_tracking_confidence=self.trackCon)
         self.mpDraw = mp.solutions.drawing_utils
 
@@ -61,7 +59,7 @@ class handDetector():
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # convert img to RGB cuz mediapipe use RGB to detect
         self.results = self.hands.process(imgRGB)
 
-        if self.results.multi_hand_landmarks:                                                     # if results.multi_hand_landmarks == True == if can detect hand
+        if self.results.multi_hand_landmarks:                                                     # if results.multi_hand_landmarks == True == if can detect hand # detect 1 hand or 2 hands...
             for handLms in self.results.multi_hand_landmarks:                                     # loop no.of detected hands
                 if draw:                                                                     # if draw == True
                     self.mpDraw.draw_landmarks(img, handLms, self.mpHands.HAND_CONNECTIONS)  # img == draw landmarks in the original img, not imgRGB
@@ -73,12 +71,12 @@ class handDetector():
 
         lmList = []
         if self.results.multi_hand_landmarks:
-            myHand = self.results.multi_hand_landmarks[handNo]    # point to particular hand number
+            myHand = self.results.multi_hand_landmarks[handNo]    # point to particular hand number # hand 1 or hand 2 or hand 3...
 
             for id, lm in enumerate(myHand.landmark):   # get 21 id points for each finger   # lm in enumerate(myHand.landmark) == getting landmark(lm) from myHand.landmark
                 # print(id,lm)                           # id = 21 points ; lm = x, y, z coordinate
-                h, w, c = img.shape                      # h,w,c == height,weight,channel. to find img's window size
-                cx, cy = int(lm.x * w), int(lm.y * h)    # cx,cy = Xcenter,Ycenter
+                h, w, c = img.shape                      # h,w,c == height,weight,channel. to find img's window size. h = img window pixel height. w = img window pixel width
+                cx, cy = int(lm.x * w), int(lm.y * h)    # cx,cy = loop each 21 landmark points in pixel form
                 #print(id, cx, cy)
                 lmList.append([id,cx,cy])
                 if draw:
