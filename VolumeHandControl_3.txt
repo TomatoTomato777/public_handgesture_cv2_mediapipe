@@ -1,0 +1,114 @@
+'''
+function:
+VolumeHandControl_1.txt - use cv2 to access camera, included showing fps
+VolumeHandControl_2.txt - show dot and line on index finger and thumb
+VolumeHandControl_3.txt - able to use hand to control volume
+
+'''
+
+import cv2
+import time
+import numpy as np
+import HandTrackingModule as htm
+import math
+
+from ctypes import cast, POINTER
+from comtypes import CLSCTX_ALL
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+
+###########################
+wCam, hCam = 640, 480
+###########################
+
+cap = cv2.VideoCapture(0)
+cap.set(3,wCam)         # 3 means frame width → set width to 640 pixels
+cap.set(4,hCam)         # 4 means frame height → set height to 480 pixels
+pTime = 0               # pTime = previous Time # cTime = current Time
+
+detector = htm.handDetector(detectionCon=0.7)
+
+'''
+----- this code are copy from github pycaw to control volume -----
+device = AudioUtilities.GetSpeakers()
+interface = device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+volume = cast(interface, POINTER(IAudioEndpointVolume))
+volume.GetMute()                           # not using in this project
+volume.GetMasterVolumeLevel()              # not using in this project
+print(volume.GetVolumeRange())             # result: (-63.5, 0.0, 0.5)   
+volume.SetMasterVolumeLevel(-20.0, None)   # not using in this project
+'''
+
+device = AudioUtilities.GetSpeakers()
+interface = device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+volume = cast(interface, POINTER(IAudioEndpointVolume))
+#volume.GetMute()                           # not using in this project
+#volume.GetMasterVolumeLevel()              # not using in this project
+volRange = volume.GetVolumeRange()
+minVol = volRange[0]    # 62.5 dB   can check from print(volume.GetVolumeRange())
+maxVol = volRange[1]    # 0 dB      can check from print(volume.GetVolumeRange())
+
+
+while True:
+    success, img = cap.read()
+    img = detector.findHands(img)
+    lmList = detector.findPosition(img,draw=False)
+    if len(lmList) !=0:
+        #print(lmList[4],lmList[8]) #lmList[4] = index 4    #lmList[8] = index 8         # print(lmList[4] will print 3 values, first is the index, second is the x positon, third is the y position)
+
+        x1, y1 = lmList[4][1], lmList[4][2]     # store lmList[2][1] into x1    # [0]=index [1]=x position [2]=y position  # lmList[2][1] == get x position of index 2  # lmList[2][2] == get y position of index 2
+        x2, y2 = lmList[8][1], lmList[8][2]     # lmList[8][1] == get x position of index 8  # lmList[8][2] == get y position of index 8
+        cx, cy = (x1 + x2)//2, (y1 + y2)//2     # to get center point
+
+        cv2.circle(img,(x1, y1),15,(255,0,255),cv2.FILLED)
+        cv2.circle(img, (x2, y2), 15, (255, 0, 255), cv2.FILLED)
+        cv2.line(img,(x1, y1),(x2, y2),(255, 0, 255),3)
+        cv2.circle(img, (cx, cy), 15, (255, 0, 255), cv2.FILLED)
+
+        length = math.hypot(x2-x1, y2-y1)
+        #print(length)      # this will print the distance between your index finger and thumb when you move
+
+        # Hand range 50 ~ 300
+        # Volume Range -65 ~ 0
+
+        '''
+        🔎 What np.interp does
+
+        numpy.interp(x, xp, fp) performs linear interpolation:
+        x → the input value you want to map
+        xp → the input range (original domain)
+        fp → the output range (target domain)
+        So, it maps x from range xp into range fp.
+
+        📌 In this case
+        
+        length → distance between two hand landmarks (say, thumb and index finger tip).
+        [50, 300] → the range of distances your hand can make:
+        50 pixels → fingers close together (minimum length).
+        300 pixels → fingers spread apart (maximum length).
+        [minVol, maxVol] → the system’s audio volume range in dB (for example -65.25 dB to 0.0 dB).
+        
+        ✅ Meaning
+        
+        If:
+        length = 50 → vol = minVol
+        length = 300 → vol = maxVol
+        length = 175 → vol will be halfway between minVol and maxVol.
+        It scales hand gesture distance → system volume range.
+        '''
+
+        vol = np.interp(length,[50,300],[minVol, maxVol])
+        print(int(length), vol)     # will print length between index finger and thumb # will print volume based on length
+        volume.SetMasterVolumeLevel(vol, None)
+
+
+        if length<50:
+            cv2.circle(img, (cx, cy), 15, (0, 255, 0), cv2.FILLED)
+
+    cTime = time.time()
+    fps = 1/(cTime-pTime)
+    pTime = cTime
+    cv2.putText(img,f'FPS:{int(fps)}',(40,50),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,0),2)
+
+
+    cv2.imshow("IMG WINDOW",img)
+    cv2.waitKey(1)
